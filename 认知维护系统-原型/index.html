@@ -1,0 +1,2621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>认知维护系统</title>
+<style>
+/* ═══════════════════════════════════════════
+   认知维护系统 · 原型样式
+   风格融合：Japanese Minimalist × Organic Flow
+   配色来源：zen.nvim 自然六色盘
+   质感参考：simple_morph Glassmorphism 轻度版
+   ═══════════════════════════════════════════ */
+
+/* ─── CSS变量系统 ─── */
+:root {
+  /* zen.nvim 核心色盘 */
+  --bg0: #1a1a1a;           /* 背景基底 - 有温度的暗 */
+  --bg1: #242424;           /* 卡片底色 */
+  --bg2: #2e2e2e;           /* 悬停/激活 */
+  --fg: #e0e0e0;            /* 文字主色 - 柔和白 */
+  --fg-dim: #a0a0a0;        /* 文字次色 */
+  --fg-muted: #666666;      /* 弱化文字 */
+  
+  /* 自然意象六色 - 对应雷达图6维 */
+  --sand: #d4c5b0;          /* 晨间暖金 */
+  --rose: #c9a9a6;          /* 晨光粉 */
+  --sky: #8fbcbb;           /* 午后海蓝 */
+  --sage: #90b090;          /* 傍晚薄荷绿 */
+  --lavender: #b4a7c7;      /* 睡前薰衣草 */
+  --mist: #7a8a8a;          /* 恢复/平衡 */
+  
+  /* 时段动态色（JS会覆盖） */
+  --period-color: var(--sage);
+  --period-color-dim: rgba(144, 176, 144, 0.15);
+  --period-glow: rgba(144, 176, 144, 0.3);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(255, 255, 255, 0.15);
+  --blur: blur(20px);
+  
+  /* 动画 */
+  --ease-breathe: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-settle: cubic-bezier(0.25, 0.1, 0.25, 1);
+  
+  /* 尺寸 */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}
+
+/* ─── 重置 & 基础 ─── */
+*, *::before, *::after {
+  margin: 0; padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "PingFang SC", "Noto Sans SC", sans-serif;
+  background: var(--bg0);
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 桌面端居中模拟手机 */
+#app-frame {
+  width: 100%; height: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg0);
+  box-shadow: 0 0 60px rgba(0,0,0,0.5);
+}
+
+@media (min-width: 431px) {
+  body {
+    background: #0d0d0d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #app-frame {
+    height: 90vh;
+    max-height: 900px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+}
+
+/* ─── 页面容器 ─── */
+.page {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(30px);
+  transition: opacity 0.5s var(--ease-breathe), transform 0.5s var(--ease-breathe);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.page::-webkit-scrollbar { display: none; }
+
+.page.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.page.exit-left {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+/* ─── 通用组件 ─── */
+
+/* 玻璃卡片 */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  transition: all 0.3s var(--ease-breathe);
+}
+
+/* 主按钮 */
+.btn-primary {
+  width: 100%;
+  padding: 18px 24px;
+  border: none;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--period-color), var(--period-color-dim));
+  color: var(--bg0);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s var(--ease-breathe), box-shadow 0.3s ease;
+}
+.btn-primary:active {
+  transform: scale(0.97);
+}
+.btn-primary .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transform: scale(0);
+  animation: ripple-effect 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes ripple-effect {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* 次级按钮 */
+.btn-secondary {
+  padding: 12px 20px;
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--fg-dim);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-secondary:active {
+  transform: scale(0.97);
+  background: var(--bg2);
+}
+
+/* 文字链接 */
+.text-link {
+  color: var(--fg-dim);
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.text-link:hover { color: var(--period-color); }
+
+/* 开关 */
+.toggle {
+  width: 50px; height: 28px;
+  background: var(--bg2);
+  border-radius: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--period-color-dim); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--fg);
+  top: 2px; left: 2px;
+  transition: transform 0.3s var(--ease-bounce);
+}
+.toggle.on::after {
+  transform: translateX(22px);
+  background: var(--period-color);
+}
+
+/* 呼吸动画 */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.6s var(--ease-breathe) forwards;
+}
+
+/* ─── 顶部导航栏 ─── */
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(to bottom, var(--bg0) 70%, transparent);
+}
+.nav-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.nav-back {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+.nav-back:active { background: var(--bg2); transform: scale(0.95); }
+
+/* ─── 粒子画布 ─── */
+#particle-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ─── 知识卡片弹层 ─── */
+.knowledge-modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s var(--ease-breathe);
+}
+.knowledge-modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.knowledge-modal .modal-bg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+}
+.knowledge-modal .modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg1);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  text-align: center;
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.4s var(--ease-bounce);
+}
+.knowledge-modal.show .modal-card {
+  transform: translateY(0) scale(1);
+}
+.knowledge-modal .modal-illustration {
+  width: 120px; height: 120px;
+  margin: 0 auto 20px;
+}
+.knowledge-modal .modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--period-color);
+}
+.knowledge-modal .modal-text {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--fg-dim);
+  margin-bottom: 24px;
+}
+.knowledge-modal .modal-from {
+  font-size: 13px;
+  color: var(--fg-muted);
+  margin-bottom: 16px;
+}
+.knowledge-modal .modal-share-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: var(--fg-dim);
+}
+
+/* ─── 首屏 Splash ─── */
+.splash-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(26,26,26,0.98) 0%, rgba(20,24,22,0.98) 100%);
+  opacity: 1;
+  transition: opacity 0.8s var(--ease-breathe), visibility 0.8s;
+}
+.splash-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.splash-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 52px 44px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-lg);
+  max-width: 320px;
+  width: 86%;
+  position: relative;
+  overflow: hidden;
+}
+.splash-card::before {
+  content: '';
+  position: absolute;
+  top: -60%; left: -30%;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: var(--period-glow);
+  filter: blur(70px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+.splash-icon {
+  width: 64px; height: 64px;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: splash-reveal 1.0s 0.4s var(--ease-breathe) forwards;
+}
+.splash-icon svg {
+  width: 100%; height: 100%;
+}
+.splash-title {
+  font-size: 52px;
+  font-weight: 200;
+  letter-spacing: 16px;
+  text-indent: 16px;
+  color: var(--fg);
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: splash-reveal 1.0s 0.8s var(--ease-breathe) forwards;
+}
+.splash-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  color: var(--fg-muted);
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: splash-reveal 1.0s 1.1s var(--ease-breathe) forwards;
+}
+.splash-line {
+  width: 40px;
+  height: 1px;
+  background: var(--period-color);
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+  transform: scaleX(0);
+  animation: splash-line-expand 0.8s 1.5s var(--ease-breathe) forwards;
+}
+.splash-philosophy {
+  font-size: 16px;
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.7;
+  color: var(--fg-dim);
+  letter-spacing: 1px;
+  margin-bottom: 36px;
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: splash-reveal 1.0s 1.8s var(--ease-breathe) forwards;
+}
+.splash-hint {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  color: var(--fg-muted);
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  animation: splash-hint-breathe 2.5s 3.0s ease-in-out infinite;
+}
+
+@keyframes splash-reveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes splash-line-expand {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes splash-hint-breathe {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════
+   页面1：首页
+   ═══════════════════════════════════════════ */
+#home-page {
+  padding: 0 20px 40px;
+}
+
+/* 问候语 */
+.greeting {
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+.greeting h2 {
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+  color: var(--fg);
+}
+.greeting .highlight {
+  color: var(--period-color);
+  font-weight: 400;
+}
+.greeting .sub-greeting {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--fg-dim);
+  font-weight: 300;
+}
+
+/* 雷达图区域 */
+.radar-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.radar-container {
+  flex: 0 0 160px;
+  height: 160px;
+  position: relative;
+}
+.radar-container canvas {
+  width: 100%; height: 100%;
+}
+.radar-labels {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.radar-label-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.radar-label-item .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 推荐卡片 */
+.recommend-card {
+  padding: 24px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.recommend-card .card-illustration {
+  width: 100%;
+  height: 140px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.recommend-card .card-illustration svg {
+  width: 100%; height: 100%;
+  animation: float 4s ease-in-out infinite;
+}
+.recommend-card .card-tag {
+  font-size: 12px;
+  color: var(--period-color);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.recommend-card .card-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.recommend-card .card-duration {
+  font-size: 14px;
+  color: var(--fg-dim);
+}
+.recommend-card .card-glow {
+  position: absolute;
+  top: -50%; right: -30%;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: var(--period-glow);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* 时间导航 */
+.time-nav {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 24px;
+  padding: 8px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+}
+.time-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.3s var(--ease-breathe);
+  position: relative;
+}
+.time-nav-item .nav-icon {
+  width: 32px; height: 32px;
+  opacity: 0.4;
+  transition: all 0.3s ease;
+}
+.time-nav-item .nav-label {
+  font-size: 11px;
+  color: var(--fg-muted);
+  transition: all 0.3s ease;
+}
+.time-nav-item.active {
+  background: var(--period-color-dim);
+}
+.time-nav-item.active .nav-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 8px var(--period-glow));
+}
+.time-nav-item.active .nav-label {
+  color: var(--period-color);
+}
+
+/* 大按钮区 */
+.cta-section {
+  margin-bottom: 20px;
+}
+
+/* 队友动态 */
+.teammates-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+.teammates-bar .avatar-group {
+  display: flex;
+}
+.teammates-bar .avatar-group .avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sand), var(--rose));
+  border: 2px solid var(--bg0);
+  margin-left: -6px;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--bg0);
+  font-weight: 600;
+}
+.teammates-bar .avatar-group .avatar:first-child { margin-left: 0; }
+.teammates-bar .activity-text {
+  color: var(--fg-dim);
+}
+.teammates-bar .activity-text .protocol-name {
+  color: var(--period-color);
+}
+
+/* 查看全部 */
+.view-all {
+  text-align: center;
+  padding-bottom: 20px;
+}
+
+/* ─── 底部导航 Tab Bar ─── */
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin: 24px 0 8px;
+  padding: 8px;
+  background: rgba(36, 36, 36, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.bottom-nav .nav-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  color: var(--fg-muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-breathe);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  border-radius: var(--radius-md);
+  position: relative;
+}
+.bottom-nav .nav-link:active {
+  transform: scale(0.96);
+}
+.bottom-nav .nav-link.active {
+  color: var(--period-color);
+  background: var(--period-color-dim);
+}
+.bottom-nav .nav-link.active svg {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px var(--period-glow));
+}
+.bottom-nav .nav-link svg {
+  width: 24px; height: 24px;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+.bottom-nav .nav-link:hover svg { opacity: 0.8; }
+
+/* ═══════════════════════════════════════════
+   页面2：协议执行页
+   ═══════════════════════════════════════════ */
+#session-page {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg0);
+}
+
+.session-header {
+  padding: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.session-header .resonance {
+  font-size: 13px;
+  color: var(--period-color);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.session-header .protocol-name {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.session-illustration {
+  flex: 0 0 35%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 40px;
+}
+.session-illustration svg {
+  width: 100%;
+  max-height: 200px;
+  animation: float 5s ease-in-out infinite;
+}
+
+/* 步骤卡片滑动区 */
+.steps-slider {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.steps-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.4s var(--ease-breathe);
+}
+.step-card {
+  flex: 0 0 100%;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.step-card .step-number {
+  font-size: 12px;
+  color: var(--period-color);
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+.step-card .step-illustration {
+  width: 80px; height: 80px;
+  margin-bottom: 16px;
+}
+.step-card .step-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.step-card .step-breath {
+  font-size: 14px;
+  color: var(--fg-dim);
+  text-align: center;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* 步骤指示器 */
+.steps-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+}
+.steps-dots .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--bg2);
+  transition: all 0.3s ease;
+}
+.steps-dots .dot.active {
+  background: var(--period-color);
+  width: 20px;
+  border-radius: 3px;
+}
+
+/* 倒计时区域 */
+.timer-section {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.timer-ring {
+  width: 120px; height: 120px;
+  position: relative;
+  margin-bottom: 20px;
+}
+.timer-ring svg {
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);
+}
+.timer-ring .timer-bg {
+  fill: none;
+  stroke: var(--bg2);
+  stroke-width: 4;
+}
+.timer-ring .timer-progress {
+  fill: none;
+  stroke: var(--period-color);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 345;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.1s linear;
+}
+.timer-ring .timer-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+.timer-controls {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+/* 完成动画遮罩 */
+.completion-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ease-breathe);
+}
+.completion-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.completion-overlay .fill-bg {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(to top, var(--period-color-dim), transparent);
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 1.2s var(--ease-settle);
+}
+.completion-overlay.show .fill-bg {
+  transform: scaleY(1);
+}
+.completion-overlay .completion-content {
+  position: relative;
+  text-align: center;
+  z-index: 2;
+}
+.completion-overlay .completion-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.5s 0.4s var(--ease-bounce);
+}
+.completion-overlay.show .completion-title {
+  transform: translateY(0);
+  opacity: 1;
+}
+.completion-overlay .completion-bonus {
+  font-size: 16px;
+  color: var(--period-color);
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.5s 0.6s var(--ease-bounce);
+}
+.completion-overlay.show .completion-bonus {
+  transform: translateY(0);
+  opacity: 1;
+}
+.completion-overlay .btn-done {
+  margin-top: 32px;
+  padding: 14px 48px;
+  background: var(--fg);
+  color: var(--bg0);
+  border: none;
+  border-radius: var(--radius-xl);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.5s 0.8s var(--ease-bounce);
+}
+.completion-overlay.show .btn-done {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════
+   页面3：协议库页
+   ═══════════════════════════════════════════ */
+#library-page {
+  padding: 0 20px 40px;
+}
+
+.period-section {
+  margin-bottom: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur);
+}
+.period-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.period-header:active { background: var(--bg2); }
+.period-header .period-icon {
+  width: 28px; height: 28px;
+  flex-shrink: 0;
+}
+.period-header .period-info {
+  flex: 1;
+}
+.period-header .period-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.period-header .period-count {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+.period-header .period-arrow {
+  width: 20px; height: 20px;
+  transition: transform 0.3s var(--ease-bounce);
+  color: var(--fg-dim);
+}
+.period-section.expanded .period-arrow {
+  transform: rotate(180deg);
+}
+
+.period-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s var(--ease-breathe);
+}
+.period-section.expanded .period-content {
+  max-height: 500px;
+}
+
+.protocol-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.protocol-item {
+  padding: 16px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg1);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.protocol-item:active { transform: scale(0.97); }
+.protocol-item.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.protocol-item.locked::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(26,26,26,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.protocol-item .item-mini-svg {
+  width: 40px; height: 40px;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+.protocol-item .item-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.protocol-item .item-duration {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+.protocol-item .item-lock {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  color: var(--fg-dim);
+  z-index: 2;
+  text-align: center;
+  width: 100%;
+  padding: 0 8px;
+}
+
+/* ═══════════════════════════════════════════
+   页面4：档案页
+   ═══════════════════════════════════════════ */
+#profile-page {
+  padding: 0 20px 40px;
+}
+
+.profile-header {
+  text-align: center;
+  padding: 20px 0;
+}
+.profile-header .profile-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sage), var(--sky));
+  margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--bg0);
+}
+.profile-header .profile-name {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.profile-header .profile-stat {
+  font-size: 14px;
+  color: var(--fg-dim);
+}
+
+/* 大型雷达图 */
+.big-radar {
+  width: 260px;
+  height: 260px;
+  margin: 0 auto 24px;
+  position: relative;
+}
+.big-radar canvas {
+  width: 100%; height: 100%;
+}
+
+/* 徽章墙 */
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  margin-top: 8px;
+}
+.badge-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 24px;
+  scrollbar-width: none;
+}
+.badge-scroll::-webkit-scrollbar { display: none; }
+.badge-item {
+  flex: 0 0 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.badge-item .badge-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg2);
+  transition: all 0.3s ease;
+}
+.badge-item.earned .badge-icon {
+  border-color: var(--period-color);
+  box-shadow: 0 0 16px var(--period-glow);
+}
+.badge-item .badge-icon svg {
+  width: 28px; height: 28px;
+  opacity: 0.3;
+}
+.badge-item.earned .badge-icon svg {
+  opacity: 1;
+}
+.badge-item .badge-name {
+  font-size: 11px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+.badge-item.earned .badge-name {
+  color: var(--fg-dim);
+}
+
+/* 解锁协议缩略图 */
+.unlocked-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.unlocked-item {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--bg1);
+  border: 1px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px;
+}
+.unlocked-item svg {
+  width: 100%; height: 100%;
+  opacity: 0.6;
+}
+
+/* 影子队友 */
+.teammate-list {
+  margin-bottom: 24px;
+}
+.teammate-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.teammate-item:last-child { border-bottom: none; }
+.teammate-item .tm-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sand), var(--rose));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bg0);
+  flex-shrink: 0;
+}
+.teammate-item .tm-info { flex: 1; }
+.teammate-item .tm-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.teammate-item .tm-activity {
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.teammate-item .tm-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sage);
+  flex-shrink: 0;
+}
+
+/* 知识卡片 */
+.knowledge-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 24px;
+  scrollbar-width: none;
+}
+.knowledge-scroll::-webkit-scrollbar { display: none; }
+.knowledge-card {
+  flex: 0 0 200px;
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: var(--bg1);
+  border: 1px solid var(--glass-border);
+}
+.knowledge-card .kc-svg {
+  width: 48px; height: 48px;
+  margin-bottom: 12px;
+}
+.knowledge-card .kc-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+  margin-bottom: 12px;
+  font-style: italic;
+}
+.knowledge-card .kc-from {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+/* 设置 */
+.settings-list {
+  margin-bottom: 40px;
+}
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.setting-item .setting-label {
+  font-size: 15px;
+  color: var(--fg);
+}
+.setting-item .setting-desc {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   SVG 插画库（内联）
+   风格：抽象线条、自然意象、无人物具象
+   ═══════════════════════════════════════════ */
+
+</style>
+</head>
+<body>
+
+<div id="app-frame">
+
+<!-- ═══════════════════════════════════════════
+     首屏 Splash
+     ═══════════════════════════════════════════ -->
+<div class="splash-overlay" id="splash-overlay" onclick="dismissSplash()">
+  <div class="splash-card">
+    <div class="splash-icon">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6">
+        <path d="M32 8c-8 12-12 20-12 28s4 14 12 20c8-6 12-12 12-20s-4-16-12-28z" stroke-linejoin="round"/>
+        <path d="M20 48c4-2 8-3 12-3s8 1 12 3" stroke-dasharray="2 2"/>
+        <path d="M8 52q12-4 24-4t24 4" opacity="0.4"/>
+        <path d="M4 56q14-4 28-4t28 4" opacity="0.25"/>
+        <circle cx="48" cy="20" r="1.5" opacity="0.5"/>
+        <circle cx="14" cy="28" r="1" opacity="0.3"/>
+      </svg>
+    </div>
+    <h1 class="splash-title">息屿</h1>
+    <p class="splash-subtitle">轻运动协议 · 身体庇护所</p>
+    <div class="splash-line"></div>
+    <p class="splash-philosophy">运动不是征服，是栖息</p>
+    <p class="splash-hint">轻触进入</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面1：首页
+     ═══════════════════════════════════════════ -->
+<div class="page active" id="home-page">
+  
+  <!-- 问候 -->
+  <div class="greeting animate-fade-in">
+    <h2>今天学习了<span class="highlight">5</span>小时<br>身体在等一场山谷的风</h2>
+    <p class="sub-greeting">现在是<span id="current-period-name">傍晚</span>，适合让身心归零</p>
+  </div>
+  
+  <!-- 雷达图 + 推荐 -->
+  <div class="radar-section animate-fade-in" style="animation-delay:0.1s">
+    <div class="radar-container">
+      <canvas id="home-radar" width="160" height="160"></canvas>
+    </div>
+    <div class="radar-labels" id="radar-labels">
+      <!-- JS生成 -->
+    </div>
+  </div>
+  
+  <!-- 推荐卡片 -->
+  <div class="glass-card recommend-card animate-fade-in" style="animation-delay:0.2s" onclick="startTodayProtocol()">
+    <div class="card-glow"></div>
+    <div class="card-illustration" id="recommend-illustration">
+      <!-- SVG由JS插入 -->
+    </div>
+    <div class="card-tag" id="recommend-tag">今日推荐</div>
+    <div class="card-title" id="recommend-title">星光全身</div>
+    <div class="card-duration" id="recommend-duration">120秒 · 向四周散开</div>
+  </div>
+  
+  <!-- 时间导航 -->
+  <div class="time-nav animate-fade-in" style="animation-delay:0.3s">
+    <div class="time-nav-item" data-period="morning" onclick="switchPeriod('morning')">
+      <svg class="nav-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="16" cy="16" r="6"/>
+        <path d="M16 4v3m0 18v3M4 16h3m18 0h3M7.5 7.5l2 2M22.5 22.5l2 2M7.5 24.5l2-2M22.5 9.5l2-2"/>
+      </svg>
+      <span class="nav-label">晨间</span>
+    </div>
+    <div class="time-nav-item" data-period="afternoon" onclick="switchPeriod('afternoon')">
+      <svg class="nav-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M4 20c2-4 6-8 12-8s10 4 12 8"/>
+        <path d="M8 16c1.5-2 4-4 8-4s6.5 2 8 4"/>
+        <path d="M12 12c1-1 2.5-2 4-2s3 1 4 2"/>
+      </svg>
+      <span class="nav-label">午后</span>
+    </div>
+    <div class="time-nav-item active" data-period="evening" onclick="switchPeriod('evening')">
+      <svg class="nav-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M16 4c-4 4-6 8-6 12s2 8 6 12c4-4 6-8 6-12s-2-8-6-12z"/>
+        <circle cx="16" cy="16" r="3" fill="currentColor"/>
+      </svg>
+      <span class="nav-label">傍晚</span>
+    </div>
+    <div class="time-nav-item" data-period="night" onclick="switchPeriod('night')">
+      <svg class="nav-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M18 4c0 6-4 10-10 10 0 6 4 10 10 10 6 0 10-4 10-10 0-6-4-10-10-10z" fill="currentColor" opacity="0.3"/>
+        <circle cx="22" cy="12" r="1" fill="currentColor"/>
+        <circle cx="26" cy="18" r="0.8" fill="currentColor"/>
+      </svg>
+      <span class="nav-label">睡前</span>
+    </div>
+  </div>
+  
+  <!-- CTA -->
+  <div class="cta-section animate-fade-in" style="animation-delay:0.4s">
+    <button class="btn-primary" onclick="startTodayProtocol()">
+      开始今日仪式
+    </button>
+  </div>
+  
+  <!-- 队友动态 -->
+  <div class="teammates-bar animate-fade-in" style="animation-delay:0.5s">
+    <div class="avatar-group" id="home-avatars">
+      <!-- JS生成 -->
+    </div>
+    <span class="activity-text">
+      此刻<span id="active-count">3</span>位好友正在做<span class="protocol-name" id="active-protocol">海浪肩颈</span>
+    </span>
+  </div>
+  
+  <!-- 底部导航 Tab Bar -->
+  <div class="bottom-nav animate-fade-in" style="animation-delay:0.6s">
+    <a class="nav-link active" data-nav="home" onclick="navigateTo('home-page')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+      <span>首页</span>
+    </a>
+    <a class="nav-link" data-nav="library" onclick="navigateTo('library-page')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      <span>协议库</span>
+    </a>
+    <a class="nav-link" data-nav="profile" onclick="navigateTo('profile-page')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <span>档案</span>
+    </a>
+  </div>
+  
+  <div style="height:24px"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面2：协议执行页
+     ═══════════════════════════════════════════ -->
+<div class="page" id="session-page">
+  
+  <div class="session-header">
+    <div class="resonance" id="session-resonance">此刻 12 人正在做星光全身</div>
+    <div class="protocol-name" id="session-protocol-name">星光全身</div>
+  </div>
+  
+  <div class="session-illustration" id="session-illustration">
+    <!-- SVG由JS插入 -->
+  </div>
+  
+  <div class="steps-slider" id="steps-slider">
+    <div class="steps-track" id="steps-track">
+      <!-- JS生成步骤卡片 -->
+    </div>
+  </div>
+  
+  <div class="steps-dots" id="steps-dots">
+    <!-- JS生成 -->
+  </div>
+  
+  <div class="timer-section">
+    <div class="timer-ring">
+      <svg viewBox="0 0 120 120">
+        <circle class="timer-bg" cx="60" cy="60" r="54"/>
+        <circle class="timer-progress" id="timer-progress" cx="60" cy="60" r="54"/>
+      </svg>
+      <div class="timer-text" id="timer-text">120</div>
+    </div>
+    <div class="timer-controls">
+      <button class="btn-secondary" style="flex:1" onclick="skipStep()">跳过此步</button>
+      <button class="btn-primary" style="flex:1.5" onclick="completeStep()">完成</button>
+    </div>
+  </div>
+  
+  <!-- 完成遮罩 -->
+  <div class="completion-overlay" id="completion-overlay">
+    <div class="fill-bg"></div>
+    <div class="completion-content">
+      <div class="completion-title" id="completion-title">星光全身 完成</div>
+      <div class="completion-bonus" id="completion-bonus">柔韧 +1% · 专注 +1%</div>
+      <button class="btn-done" onclick="showKnowledgeCard()">继续</button>
+    </div>
+  </div>
+  
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面3：协议库页
+     ═══════════════════════════════════════════ -->
+<div class="page" id="library-page">
+  
+  <div class="nav-header">
+    <button class="nav-back" onclick="navigateTo('home-page')">&#8592;</button>
+    <h1>协议库</h1>
+    <div style="width:36px"></div>
+  </div>
+  
+  <div id="library-content">
+    <!-- JS生成手风琴 -->
+  </div>
+  
+  <div style="height:40px"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面4：档案页
+     ═══════════════════════════════════════════ -->
+<div class="page" id="profile-page">
+  
+  <div class="nav-header">
+    <button class="nav-back" onclick="navigateTo('home-page')">&#8592;</button>
+    <h1>我的档案</h1>
+    <div style="width:36px"></div>
+  </div>
+  
+  <!-- 用户信息 -->
+  <div class="profile-header animate-fade-in">
+    <div class="profile-avatar">我</div>
+    <div class="profile-name">学习者</div>
+    <div class="profile-stat">已累计完成 <span id="total-sessions">0</span> 次仪式</div>
+  </div>
+  
+  <!-- 大型雷达图 -->
+  <div class="big-radar animate-fade-in" style="animation-delay:0.1s">
+    <canvas id="profile-radar" width="260" height="260"></canvas>
+  </div>
+  
+  <!-- 徽章墙 -->
+  <div class="section-title animate-fade-in" style="animation-delay:0.2s">成就徽章</div>
+  <div class="badge-scroll animate-fade-in" style="animation-delay:0.25s" id="badge-scroll">
+    <!-- JS生成 -->
+  </div>
+  
+  <!-- 已解锁协议 -->
+  <div class="section-title animate-fade-in" style="animation-delay:0.3s">已解锁协议</div>
+  <div class="unlocked-grid animate-fade-in" style="animation-delay:0.35s" id="unlocked-grid">
+    <!-- JS生成 -->
+  </div>
+  
+  <!-- 影子队友 -->
+  <div class="section-title animate-fade-in" style="animation-delay:0.4s">影子队友</div>
+  <div class="teammate-list animate-fade-in" style="animation-delay:0.45s" id="teammate-list">
+    <!-- JS生成 -->
+  </div>
+  
+  <!-- 收到的知识卡片 -->
+  <div class="section-title animate-fade-in" style="animation-delay:0.5s">收到的知识卡片</div>
+  <div class="knowledge-scroll animate-fade-in" style="animation-delay:0.55s" id="knowledge-scroll">
+    <!-- JS生成 -->
+  </div>
+  
+  <!-- 我分享的卡片 -->
+  <div class="section-title animate-fade-in" style="animation-delay:0.58s">我分享的卡片</div>
+  <div class="knowledge-scroll animate-fade-in" style="animation-delay:0.62s" id="shared-scroll">
+    <!-- JS生成 -->
+  </div>
+  
+  <!-- 设置 -->
+  <div class="section-title animate-fade-in" style="animation-delay:0.6s">设置</div>
+  <div class="settings-list animate-fade-in" style="animation-delay:0.65s">
+    <div class="setting-item">
+      <div>
+        <div class="setting-label">自动分享知识卡片</div>
+        <div class="setting-desc">完成仪式后自动分享给队友</div>
+      </div>
+      <div class="toggle on" id="toggle-share" onclick="toggleSetting(this)"></div>
+    </div>
+    <div class="setting-item">
+      <div>
+        <div class="setting-label">显示影子队友</div>
+        <div class="setting-desc">在首页和执行页显示队友动态</div>
+      </div>
+      <div class="toggle on" id="toggle-teammates" onclick="toggleSetting(this)"></div>
+    </div>
+  </div>
+  
+  <div style="height:40px"></div>
+</div>
+
+<!-- 知识卡片弹层 -->
+<div class="knowledge-modal" id="knowledge-modal">
+  <div class="modal-bg" onclick="closeKnowledgeCard()"></div>
+  <div class="modal-card">
+    <div class="modal-illustration" id="modal-illustration">
+      <!-- SVG -->
+    </div>
+    <div class="modal-title" id="modal-title">海浪来了又去</div>
+    <div class="modal-text" id="modal-text">海浪来了又去，肩颈也是。<br>身体值得被温柔对待。</div>
+    <div class="modal-from" id="modal-from">来自队友 青叶 的分享</div>
+    <div class="modal-share-toggle" id="modal-share-toggle">
+      <span>分享给队友</span>
+      <div class="toggle on" onclick="toggleModalShare(this)"></div>
+    </div>
+    <button class="btn-primary" onclick="finishSession()">收下这张卡片</button>
+  </div>
+</div>
+
+<!-- 粒子画布 -->
+<canvas id="particle-canvas"></canvas>
+
+</div><!-- /#app-frame -->
+
+<script>
+
+/* ═══════════════════════════════════════════
+   认知维护系统 · 原型逻辑
+   ═══════════════════════════════════════════ */
+
+// ─── 数据层 ───
+
+const PERIOD_CONFIG = {
+  morning: {
+    name: '晨间',
+    color: '#d4c5b0',
+    colorDim: 'rgba(212,197,176,0.15)',
+    colorGlow: 'rgba(212,197,176,0.3)',
+    greeting: '身体在等一场山谷的风',
+    sub: '让脊柱像晨光一样逐节亮起'
+  },
+  afternoon: {
+    name: '午后',
+    color: '#8fbcbb',
+    colorDim: 'rgba(143,188,187,0.15)',
+    colorGlow: 'rgba(143,188,187,0.3)',
+    greeting: '肩颈值得一次海浪的拥抱',
+    sub: '让腰椎像云朵一样柔软舒展'
+  },
+  evening: {
+    name: '傍晚',
+    color: '#90b090',
+    colorDim: 'rgba(144,176,144,0.15)',
+    colorGlow: 'rgba(144,176,144,0.3)',
+    greeting: '身体在等一场山谷的风',
+    sub: '让身体像星光一样向四周散开'
+  },
+  night: {
+    name: '睡前',
+    color: '#b4a7c7',
+    colorDim: 'rgba(180,167,199,0.15)',
+    colorGlow: 'rgba(180,167,199,0.3)',
+    greeting: '呼吸像月光一样缓慢铺满全身',
+    sub: '让身体像溪流中的石头被缓缓冲刷'
+  }
+};
+
+const PROTOCOLS = {
+  morning: [
+    {
+      id: 'forest-breath',
+      name: '森林呼吸',
+      duration: 60,
+      unlock: 'initial',
+      dims: { breath: 2, focus: 1 },
+      steps: [
+        { title: '站立扎根', breath: '双脚分开与肩同宽，想象树根扎入大地', svg: 'tree-root' },
+        { title: '腹式呼吸', breath: '吸气4秒，腹部鼓起，像树吸收晨露', svg: 'tree-breath' },
+        { title: '双臂上举', breath: '呼气6秒，双臂缓缓上举，向天空生长', svg: 'tree-grow' }
+      ],
+      illustration: 'forest',
+      knowledge: { title: '每一次呼吸都是新的扎根', text: '树木从不催促自己的生长。<br>你的身体也是。' }
+    },
+    {
+      id: 'spine-light',
+      name: '晨光脊柱',
+      duration: 90,
+      unlock: 'morning-3',
+      dims: { flexibility: 2, balance: 1 },
+      steps: [
+        { title: '猫牛式', breath: '吸气抬头塌腰，呼气拱背低头，脊柱逐节流动', svg: 'spine-cat' },
+        { title: '婴儿式', breath: '臀部坐于脚跟，前额触地，脊柱温柔沉降', svg: 'spine-child' },
+        { title: '缓缓起身', breath: '逐节抬起脊柱，像晨光从山后升起', svg: 'spine-rise' }
+      ],
+      illustration: 'sunrise',
+      knowledge: { title: '脊柱是身体的黎明', text: '晨光不是一瞬间亮的。<br>脊柱也值得被逐节唤醒。' }
+    }
+  ],
+  afternoon: [
+    {
+      id: 'wave-neck',
+      name: '海浪肩颈',
+      duration: 90,
+      unlock: 'initial',
+      dims: { flexibility: 2, recovery: 1 },
+      steps: [
+        { title: '肩颈绕环', breath: '双肩向后缓慢绕环，像海浪退潮又涌来', svg: 'wave-circle' },
+        { title: '耳朵贴肩', breath: '右耳找右肩，停留3个呼吸，换边', svg: 'wave-tilt' },
+        { title: '温柔点头', breath: '下巴找锁骨，再缓缓仰头，像海鸥掠过海面', svg: 'wave-nod' }
+      ],
+      illustration: 'wave',
+      knowledge: { title: '海浪来了又去', text: '海浪来了又去，肩颈也是。<br>不需要抓住什么。' }
+    },
+    {
+      id: 'cloud-lumbar',
+      name: '云朵腰椎',
+      duration: 90,
+      unlock: 'afternoon-3',
+      dims: { flexibility: 2, balance: 1 },
+      steps: [
+        { title: '坐姿扭转', breath: '右手扶左膝，身体向左扭转，腰椎像云一样舒展', svg: 'cloud-twist' },
+        { title: '坐姿前屈', breath: '身体缓缓前倾，让腰椎像云一样柔软', svg: 'cloud-fold' },
+        { title: '缓缓回正', breath: '双手扶膝，慢慢直起上身，云朵飘回原处', svg: 'cloud-return' }
+      ],
+      illustration: 'cloud',
+      knowledge: { title: '云朵从不僵硬', text: '云朵没有固定的形状。<br>你的腰椎也可以。' }
+    }
+  ],
+  evening: [
+    {
+      id: 'starlight-full',
+      name: '星光全身',
+      duration: 120,
+      unlock: 'initial',
+      dims: { flexibility: 1, strength: 1, breath: 1 },
+      steps: [
+        { title: '站立侧弯', breath: '右手沿右腿向下滑，左臂上举，像星光向一侧散开', svg: 'star-bend' },
+        { title: '手臂画圈', breath: '双臂从身体两侧向上画大圈，像星星旋转', svg: 'star-circle' },
+        { title: '深呼吸', breath: '双脚站稳，深吸一口气，身体像星光一样向四周散开', svg: 'star-spread' }
+      ],
+      illustration: 'starlight',
+      knowledge: { title: '你身体里有和星星一样多的原子', text: '你身体里的原子，和星星里的一样。<br>你本身就是星光。' }
+    },
+    {
+      id: 'valley-legs',
+      name: '山谷下肢',
+      duration: 90,
+      unlock: 'evening-3',
+      dims: { strength: 2, recovery: 1 },
+      steps: [
+        { title: '踝泵运动', breath: '脚尖向上勾，再向下压，像溪流拍打石头', svg: 'valley-ankle' },
+        { title: '小腿拉伸', breath: '一腿后退，脚跟踩地，感受小腿像溪流一样流动', svg: 'valley-stretch' },
+        { title: '原地踏步', breath: '轻轻踏步，双腿像山谷溪流一样重新流动', svg: 'valley-step' }
+      ],
+      illustration: 'valley',
+      knowledge: { title: '溪流从不停留', text: '溪流遇到石头就绕过去。<br>你的双腿也值得重新流动。' }
+    }
+  ],
+  night: [
+    {
+      id: 'moonlight-breath',
+      name: '月光呼吸',
+      duration: 120,
+      unlock: 'initial',
+      dims: { breath: 2, focus: 1, recovery: 1 },
+      steps: [
+        { title: '4-7-8呼吸', breath: '吸气4秒，屏息7秒，呼气8秒，像月光缓缓铺满', svg: 'moon-breathe' },
+        { title: '身体扫描', breath: '从头顶到脚尖，感受月光一寸一寸流过身体', svg: 'moon-scan' },
+        { title: '沉降', breath: '每一次呼气，身体更深地沉向床面，像月光沉入湖面', svg: 'moon-sink' }
+      ],
+      illustration: 'moonlight',
+      knowledge: { title: '月光不需要努力', text: '月光只是存在，就铺满了大地。<br>你的呼吸也是。' }
+    },
+    {
+      id: 'stream-relax',
+      name: '溪流放松',
+      duration: 150,
+      unlock: 'night-3',
+      dims: { recovery: 3, flexibility: 1 },
+      steps: [
+        { title: '仰卧抱膝', breath: '平躺，双膝抱向胸口，像溪流中的石头被包围', svg: 'stream-knee' },
+        { title: '脊柱扭转', breath: '双膝倒向右侧，双臂展开，身体像溪流分叉', svg: 'stream-twist' },
+        { title: '渐进放松', breath: '从脚趾到头顶，逐一放松，像石头被溪流缓缓冲刷', svg: 'stream-release' }
+      ],
+      illustration: 'stream',
+      knowledge: { title: '石头被溪流打磨', text: '石头不是一天被打磨光滑的。<br>身体也是。' }
+    }
+  ]
+};
+
+const UNLOCK_RULES = {
+  'initial': '初始解锁',
+  'morning-3': '完成3次晨间协议解锁',
+  'afternoon-3': '完成3次午后协议解锁',
+  'evening-3': '完成3次傍晚协议解锁',
+  'night-3': '完成3次睡前协议解锁',
+  'all-8': '8个协议各完成1次，解锁「自然行者」'
+};
+
+const BADGES = [
+  { id: 'forest-walker', name: '森林行者', icon: 'tree', condition: 'morning-count', threshold: 3, color: '#d4c5b0' },
+  { id: 'wave-traveler', name: '海浪旅人', icon: 'wave', condition: 'afternoon-count', threshold: 5, color: '#8fbcbb' },
+  { id: 'star-guardian', name: '星光守护者', icon: 'star', condition: 'evening-count', threshold: 7, color: '#90b090' },
+  { id: 'moon-listener', name: '月光倾听者', icon: 'moon', condition: 'night-count', threshold: 3, color: '#b4a7c7' },
+  { id: 'flex-explorer', name: '柔韧探索者', icon: 'leaf', condition: 'flexibility', threshold: 20, color: '#90b090' },
+  { id: 'breath-walker', name: '呼吸行者', icon: 'wind', condition: 'breath', threshold: 30, color: '#8fbcbb' }
+];
+
+const KNOWLEDGE_CARDS = [
+  { text: '海浪来了又去，肩颈也是。', from: '青叶', illustration: 'wave' },
+  { text: '你的身体里有和星星一样多的原子。', from: '小北', illustration: 'starlight' },
+  { text: '呼吸像月光一样缓慢铺满全身。', from: '浅川', illustration: 'moonlight' },
+  { text: '树木从不催促自己的生长。', from: '林深', illustration: 'forest' },
+  { text: '溪流遇到石头就绕过去。', from: '溪云', illustration: 'stream' },
+  { text: '云朵没有固定的形状。', from: '天青', illustration: 'cloud' }
+];
+
+const TEAMMATES = [
+  { name: '青叶', initial: '青', color1: '#90b090', color2: '#8fbcbb', protocol: '海浪肩颈', done: true },
+  { name: '小北', initial: '北', color1: '#b4a7c7', color2: '#c9a9a6', protocol: '月光呼吸', done: false },
+  { name: '浅川', initial: '浅', color1: '#8fbcbb', color2: '#d4c5b0', protocol: '星光全身', done: true },
+  { name: '林深', initial: '林', color1: '#d4c5b0', color2: '#90b090', protocol: '森林呼吸', done: false },
+  { name: '溪云', initial: '溪', color1: '#90b090', color2: '#b4a7c7', protocol: '溪流放松', done: true }
+];
+
+// SVG 插画库（抽象线条风格）
+const ILLUSTRATIONS = {
+  forest: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <path d="M100 20l-20 40h40z" stroke-linejoin="round"/>
+    <path d="M100 50l-30 50h60z" stroke-linejoin="round"/>
+    <path d="M100 90l-15 30h30z" stroke-linejoin="round"/>
+    <line x1="100" y1="20" x2="100" y2="120"/>
+    <path d="M60 120q20-5 40 0q20 5 40 0" stroke-dasharray="4 4"/>
+    <circle cx="140" cy="40" r="3" opacity="0.5"/>
+    <circle cx="50" cy="60" r="2" opacity="0.3"/>
+  </svg>`,
+  sunrise: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <path d="M40 100q60-50 120 0" stroke-dasharray="3 3"/>
+    <line x1="100" y1="20" x2="100" y2="50"/>
+    <line x1="60" y1="35" x2="75" y2="50"/>
+    <line x1="140" y1="35" x2="125" y2="50"/>
+    <line x1="40" y1="60" x2="60" y2="65"/>
+    <line x1="160" y1="60" x2="140" y2="65"/>
+    <path d="M70 100q30-40 60 0" fill="currentColor" opacity="0.1"/>
+    <circle cx="100" cy="75" r="12" fill="currentColor" opacity="0.15"/>
+  </svg>`,
+  wave: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <path d="M10 80q30-20 60 0t60 0t60 0"/>
+    <path d="M10 100q30-20 60 0t60 0t60 0"/>
+    <path d="M10 120q30-20 60 0t60 0t60 0"/>
+    <circle cx="160" cy="40" r="4" opacity="0.2"/>
+    <circle cx="175" cy="55" r="2.5" opacity="0.15"/>
+    <path d="M30 50q10-5 20 0" stroke-dasharray="2 2"/>
+  </svg>`,
+  cloud: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <path d="M60 90q-10-20 10-30q10-20 35-10q15-15 35-5q20 5 15 25q15 10 5 25q-10 10-25 5z" fill="currentColor" opacity="0.08"/>
+    <path d="M50 100q40-10 100 0"/>
+    <path d="M70 85q5-15 15-10"/>
+    <path d="M110 80q8-12 18-5"/>
+    <circle cx="45" cy="55" r="2" opacity="0.3"/>
+    <circle cx="165" cy="70" r="1.5" opacity="0.2"/>
+  </svg>`,
+  starlight: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <circle cx="100" cy="70" r="25" fill="currentColor" opacity="0.06"/>
+    <circle cx="100" cy="70" r="15" fill="currentColor" opacity="0.1"/>
+    <line x1="100" y1="30" x2="100" y2="50"/>
+    <line x1="100" y1="90" x2="100" y2="110"/>
+    <line x1="60" y1="70" x2="80" y2="70"/>
+    <line x1="120" y1="70" x2="140" y2="70"/>
+    <line x1="72" y1="42" x2="85" y2="55"/>
+    <line x1="115" y1="55" x2="128" y2="42"/>
+    <line x1="72" y1="98" x2="85" y2="85"/>
+    <line x1="115" y1="85" x2="128" y2="98"/>
+    <circle cx="40" cy="35" r="2" fill="currentColor" opacity="0.4"/>
+    <circle cx="165" cy="45" r="1.5" fill="currentColor" opacity="0.3"/>
+    <circle cx="150" cy="105" r="2.5" fill="currentColor" opacity="0.35"/>
+  </svg>`,
+  valley: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <path d="M20 100q40-60 80-20q40-40 80 20"/>
+    <path d="M40 100q30-40 60-10q30-30 60 10"/>
+    <path d="M60 100q20-20 40-5q20-15 40 5"/>
+    <path d="M100 85q-5 5-5 15" stroke-dasharray="2 2"/>
+    <circle cx="45" cy="45" r="2" opacity="0.3"/>
+    <circle cx="155" cy="50" r="1.5" opacity="0.2"/>
+  </svg>`,
+  moonlight: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <path d="M140 30a35 35 0 100 60a28 28 0 010-60z" fill="currentColor" opacity="0.1"/>
+    <circle cx="50" cy="40" r="1.5" opacity="0.4"/>
+    <circle cx="165" cy="55" r="1" opacity="0.3"/>
+    <circle cx="45" cy="100" r="2" opacity="0.35"/>
+    <circle cx="170" cy="110" r="1.5" opacity="0.25"/>
+    <path d="M80 110q20-5 40 0" stroke-dasharray="3 3"/>
+    <path d="M90 115q10-3 20 0" stroke-dasharray="2 2"/>
+  </svg>`,
+  stream: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7">
+    <path d="M20 70q30 10 50-5q20-15 40 0q20 15 40 0q20-15 30 5"/>
+    <path d="M20 85q30 10 50-5q20-15 40 0q20 15 40 0q20-15 30 5" opacity="0.5"/>
+    <path d="M20 100q30 10 50-5q20-15 40 0q20 15 40 0q20-15 30 5" opacity="0.3"/>
+    <ellipse cx="70" cy="60" rx="8" ry="4" fill="currentColor" opacity="0.08"/>
+    <ellipse cx="130" cy="80" rx="6" ry="3" fill="currentColor" opacity="0.06"/>
+    <circle cx="45" cy="45" r="1.5" opacity="0.3"/>
+  </svg>`
+};
+
+// 小图标SVG
+const MINI_SVGS = {
+  tree: `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 8l-8 16h16z"/><line x1="20" y1="8" x2="20" y2="32"/></svg>`,
+  wave: `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20q8-6 16 0t16 0"/></svg>`,
+  star: `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="20" cy="20" r="6"/><line x1="20" y1="8" x2="20" y2="12"/><line x1="20" y1="28" x2="20" y2="32"/><line x1="8" y1="20" x2="12" y2="20"/><line x1="28" y1="20" x2="32" y2="20"/></svg>`,
+  moon: `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M26 8a10 10 0 100 20a8 8 0 010-20z"/></svg>`,
+  leaf: `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6q12 8 12 18a12 12 0 01-24 0q0-10 12-18z"/><line x1="20" y1="6" x2="20" y2="36"/></svg>`,
+  wind: `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 16h18a6 6 0 000-12"/><path d="M8 26h12a4 4 0 000-8"/><path d="M8 36h6"/></svg>`
+};
+
+// ─── 状态管理 ───
+
+let appState = {
+  currentPeriod: 'evening',
+  currentProtocol: null,
+  currentStep: 0,
+  timer: null,
+  timeLeft: 0,
+  totalTime: 0,
+  radar: { flexibility: 42, strength: 22, balance: 38, breath: 55, focus: 30, recovery: 18 },
+  completed: {},
+  periodCounts: { morning: 0, afternoon: 0, evening: 0, night: 0 },
+  unlocked: ['forest-breath', 'wave-neck', 'starlight-full', 'moonlight-breath'],
+  totalSessions: 0,
+  settings: { autoShare: true, showTeammates: true },
+  sharedCards: [],
+  autoTimer: null
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('cognitive-care-state');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      appState = { ...appState, ...parsed };
+      // 检测旧版本雷达图数据（总值<100为旧数据），强制重置为不规则多边形
+      const radarTotal = Object.values(appState.radar).reduce((a, b) => a + b, 0);
+      if (radarTotal < 100) {
+        appState.radar = { flexibility: 42, strength: 22, balance: 38, breath: 55, focus: 30, recovery: 18 };
+      }
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('cognitive-care-state', JSON.stringify({
+      radar: appState.radar,
+      completed: appState.completed,
+      periodCounts: appState.periodCounts,
+      unlocked: appState.unlocked,
+      totalSessions: appState.totalSessions,
+      settings: appState.settings,
+      sharedCards: appState.sharedCards
+    }));
+  } catch(e) {}
+}
+
+// ─── 时段检测 ───
+
+function detectPeriod() {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 22) return 'evening';
+  return 'night';
+}
+
+function setPeriodTheme(period) {
+  appState.currentPeriod = period;
+  const cfg = PERIOD_CONFIG[period];
+  const root = document.documentElement;
+  root.style.setProperty('--period-color', cfg.color);
+  root.style.setProperty('--period-color-dim', cfg.colorDim);
+  root.style.setProperty('--period-glow', cfg.colorGlow);
+  
+  // 更新导航高亮
+  document.querySelectorAll('.time-nav-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.period === period);
+  });
+  
+  // 更新问候语
+  const greetEl = document.querySelector('.greeting h2');
+  const subEl = document.querySelector('.sub-greeting');
+  if (greetEl) greetEl.innerHTML = `今天学习了<span class="highlight">5</span>小时<br>${cfg.greeting}`;
+  if (subEl) subEl.innerHTML = `现在是<span id="current-period-name">${cfg.name}</span>，${cfg.sub}`;
+}
+
+// ─── 雷达图 ───
+
+function drawRadar(canvasId, size, values, showLabels) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  ctx.scale(dpr, dpr);
+  
+  const center = size / 2;
+  const radius = size * 0.35;
+  const dims = ['柔韧', '力量', '平衡', '呼吸', '专注', '恢复'];
+  const colors = ['#90b090', '#d4c5b0', '#8fbcbb', '#b4a7c7', '#c9a9a6', '#7a8a8a'];
+  const keys = ['flexibility', 'strength', 'balance', 'breath', 'focus', 'recovery'];
+  
+  // 清除
+  ctx.clearRect(0, 0, size, size);
+  
+  // 网格
+  for (let i = 1; i <= 4; i++) {
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let j = 0; j < 6; j++) {
+      const angle = (Math.PI * 2 / 6) * j - Math.PI / 2;
+      const r = radius * (i / 4);
+      const x = center + Math.cos(angle) * r;
+      const y = center + Math.sin(angle) * r;
+      if (j === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+  
+  // 轴线
+  for (let j = 0; j < 6; j++) {
+    const angle = (Math.PI * 2 / 6) * j - Math.PI / 2;
+    const x = center + Math.cos(angle) * radius;
+    const y = center + Math.sin(angle) * radius;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.moveTo(center, center);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    
+    // 标签
+    if (showLabels) {
+      const lx = center + Math.cos(angle) * (radius + 20);
+      const ly = center + Math.sin(angle) * (radius + 20);
+      ctx.fillStyle = colors[j];
+      ctx.font = '11px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(dims[j], lx, ly);
+    }
+  }
+  
+  // 数据区域
+  ctx.beginPath();
+  for (let j = 0; j < 6; j++) {
+    const angle = (Math.PI * 2 / 6) * j - Math.PI / 2;
+    const val = values[keys[j]] || 0;
+    const r = radius * (val / 100);
+    const x = center + Math.cos(angle) * r;
+    const y = center + Math.sin(angle) * r;
+    if (j === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(144,176,144,0.15)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(144,176,144,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  
+  // 数据点
+  for (let j = 0; j < 6; j++) {
+    const angle = (Math.PI * 2 / 6) * j - Math.PI / 2;
+    const val = values[keys[j]] || 0;
+    const r = radius * (val / 100);
+    const x = center + Math.cos(angle) * r;
+    const y = center + Math.sin(angle) * r;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = colors[j];
+    ctx.fill();
+  }
+}
+
+function initHomeRadar() {
+  drawRadar('home-radar', 160, appState.radar, false);
+  
+  // 生成标签
+  const labels = document.getElementById('radar-labels');
+  if (labels) {
+    const dims = ['柔韧', '力量', '平衡', '呼吸', '专注', '恢复'];
+    const colors = ['#90b090', '#d4c5b0', '#8fbcbb', '#b4a7c7', '#c9a9a6', '#7a8a8a'];
+    const keys = ['flexibility', 'strength', 'balance', 'breath', 'focus', 'recovery'];
+    labels.innerHTML = dims.map((d, i) => 
+      `<div class="radar-label-item"><span class="dot" style="background:${colors[i]}"></span>${d} ${appState.radar[keys[i]]}%</div>`
+    ).join('');
+  }
+}
+
+function initProfileRadar() {
+  drawRadar('profile-radar', 260, appState.radar, true);
+}
+
+// ─── 推荐卡片 ───
+
+function updateRecommendCard() {
+  const period = appState.currentPeriod;
+  const protocols = PROTOCOLS[period];
+  const protocol = protocols.find(p => appState.unlocked.includes(p.id)) || protocols[0];
+  appState.currentProtocol = protocol;
+  
+  document.getElementById('recommend-title').textContent = protocol.name;
+  document.getElementById('recommend-duration').textContent = `${protocol.duration}秒 · ${protocol.steps[protocol.steps.length-1].breath.split('，').pop()}`;
+  document.getElementById('recommend-illustration').innerHTML = ILLUSTRATIONS[protocol.illustration] || '';
+  document.getElementById('recommend-tag').textContent = '今日推荐';
+  
+  // 更新队友动态
+  const activeTeammates = TEAMMATES.filter(t => !t.done).slice(0, 3);
+  document.getElementById('active-count').textContent = activeTeammates.length;
+  document.getElementById('active-protocol').textContent = activeTeammates[0]?.protocol || protocol.name;
+  
+  const avatarGroup = document.getElementById('home-avatars');
+  avatarGroup.innerHTML = activeTeammates.map(t => 
+    `<div class="avatar" style="background:linear-gradient(135deg,${t.color1},${t.color2})">${t.initial}</div>`
+  ).join('');
+}
+
+// ─── 页面路由 ───
+
+function navigateTo(pageId) {
+  document.querySelectorAll('.page').forEach(page => {
+    if (page.id === pageId) {
+      page.classList.add('active');
+      page.classList.remove('exit-left');
+    } else {
+      page.classList.remove('active');
+      if (page.classList.contains('active')) page.classList.add('exit-left');
+    }
+  });
+  
+  // 更新底部导航高亮
+  const navMap = { 'home-page': 'home', 'library-page': 'library', 'profile-page': 'profile' };
+  const activeNav = navMap[pageId];
+  document.querySelectorAll('.bottom-nav .nav-link').forEach(link => {
+    link.classList.toggle('active', link.dataset.nav === activeNav);
+  });
+  
+  // 页面初始化
+  if (pageId === 'profile-page') initProfilePage();
+  if (pageId === 'library-page') initLibraryPage();
+}
+
+// ─── 协议执行 ───
+
+function startTodayProtocol() {
+  const protocol = appState.currentProtocol;
+  if (!protocol) return;
+  
+  appState.currentStep = 0;
+  appState.totalTime = protocol.duration;
+  appState.timeLeft = protocol.duration;
+  
+  // 设置执行页
+  document.getElementById('session-protocol-name').textContent = protocol.name;
+  document.getElementById('session-resonance').textContent = `此刻 ${Math.floor(Math.random()*15+5)} 人正在做${protocol.name}`;
+  document.getElementById('session-illustration').innerHTML = ILLUSTRATIONS[protocol.illustration] || '';
+  
+  // 生成步骤卡片
+  const track = document.getElementById('steps-track');
+  track.innerHTML = protocol.steps.map((step, i) => `
+    <div class="step-card">
+      <div class="step-number">步骤 ${i+1} / ${protocol.steps.length}</div>
+      <div class="step-illustration">${ILLUSTRATIONS[step.svg] || ILLUSTRATIONS[protocol.illustration] || ''}</div>
+      <div class="step-title">${step.title}</div>
+      <div class="step-breath">${step.breath}</div>
+    </div>
+  `).join('');
+  track.style.transform = 'translateX(0)';
+  
+  // 生成指示点
+  const dots = document.getElementById('steps-dots');
+  dots.innerHTML = protocol.steps.map((_, i) => 
+    `<div class="dot ${i===0?'active':''}"></div>`
+  ).join('');
+  
+  // 初始化倒计时
+  updateTimerDisplay();
+  document.getElementById('completion-overlay').classList.remove('show');
+  
+  navigateTo('session-page');
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(appState.timer);
+  appState.timer = setInterval(() => {
+    appState.timeLeft--;
+    updateTimerDisplay();
+    if (appState.timeLeft <= 0) {
+      completeStep();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const text = document.getElementById('timer-text');
+  const progress = document.getElementById('timer-progress');
+  text.textContent = appState.timeLeft;
+  
+  const circumference = 2 * Math.PI * 54;
+  const offset = circumference * (1 - appState.timeLeft / appState.totalTime);
+  progress.style.strokeDashoffset = offset;
+}
+
+function skipStep() {
+  const protocol = appState.currentProtocol;
+  if (!protocol) return;
+  
+  if (appState.currentStep < protocol.steps.length - 1) {
+    appState.currentStep++;
+    updateStepView();
+  } else {
+    finishProtocol();
+  }
+}
+
+function completeStep() {
+  const protocol = appState.currentProtocol;
+  if (!protocol) return;
+  
+  if (appState.currentStep < protocol.steps.length - 1) {
+    appState.currentStep++;
+    appState.timeLeft = Math.floor(appState.totalTime / protocol.steps.length);
+    updateStepView();
+  } else {
+    finishProtocol();
+  }
+}
+
+function updateStepView() {
+  const track = document.getElementById('steps-track');
+  track.style.transform = `translateX(-${appState.currentStep * 100}%)`;
+  
+  document.querySelectorAll('.steps-dots .dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === appState.currentStep);
+  });
+}
+
+function finishProtocol() {
+  clearInterval(appState.timer);
+  clearTimeout(appState.autoTimer);
+  
+  const protocol = appState.currentProtocol;
+  if (!protocol) return;
+  
+  // 更新进度
+  appState.totalSessions++;
+  appState.periodCounts[appState.currentPeriod]++;
+  appState.completed[protocol.id] = (appState.completed[protocol.id] || 0) + 1;
+  
+  // 更新雷达图
+  Object.entries(protocol.dims).forEach(([dim, val]) => {
+    appState.radar[dim] = Math.min(100, appState.radar[dim] + val);
+  });
+  
+  // 检查解锁
+  checkUnlocks();
+  
+  // 保存
+  saveState();
+  
+  // 显示完成动画
+  const overlay = document.getElementById('completion-overlay');
+  document.getElementById('completion-title').textContent = `${protocol.name} 完成`;
+  const bonusText = Object.entries(protocol.dims).map(([dim, val]) => {
+    const names = { flexibility: '柔韧', strength: '力量', balance: '平衡', breath: '呼吸', focus: '专注', recovery: '恢复' };
+    return `${names[dim]} +${val}%`;
+  }).join(' · ');
+  document.getElementById('completion-bonus').textContent = bonusText;
+  overlay.classList.add('show');
+  
+  // 触发轻量粒子动画
+  if (window.triggerParticles) {
+    const cfg = PERIOD_CONFIG[appState.currentPeriod];
+    window.triggerParticles(cfg.color);
+  }
+  
+  // 2秒后自动展示知识卡片（零决策成本）
+  appState.autoTimer = setTimeout(() => {
+    if (overlay.classList.contains('show')) {
+      showKnowledgeCard();
+    }
+  }, 2000);
+}
+
+function checkUnlocks() {
+  const counts = appState.periodCounts;
+  const completed = appState.completed;
+  
+  // 检查各时段解锁
+  Object.entries(PROTOCOLS).forEach(([period, protocols]) => {
+    const rule = `${period}-3`;
+    protocols.forEach(p => {
+      if (p.unlock === rule && counts[period] >= 3 && !appState.unlocked.includes(p.id)) {
+        appState.unlocked.push(p.id);
+      }
+    });
+  });
+  
+  // 检查全解锁（自然行者）
+  const allIds = Object.values(PROTOCOLS).flat().map(p => p.id);
+  const allCompleted = allIds.every(id => completed[id] && completed[id] >= 1);
+  if (allCompleted && !appState.unlocked.includes('nature-walker')) {
+    appState.unlocked.push('nature-walker');
+  }
+}
+
+// ─── 知识卡片 ───
+
+function showKnowledgeCard() {
+  clearTimeout(appState.autoTimer);
+  
+  const protocol = appState.currentProtocol;
+  const card = protocol ? protocol.knowledge : KNOWLEDGE_CARDS[0];
+  const sender = TEAMMATES[Math.floor(Math.random() * TEAMMATES.length)];
+  
+  document.getElementById('modal-title').textContent = card.title;
+  document.getElementById('modal-text').innerHTML = card.text;
+  document.getElementById('modal-from').textContent = `来自队友 ${sender.name} 的分享`;
+  document.getElementById('modal-illustration').innerHTML = 
+    ILLUSTRATIONS[protocol?.illustration] || ILLUSTRATIONS['starlight'];
+  
+  // 初始化分享toggle（默认开启）
+  const shareToggle = document.querySelector('#modal-share-toggle .toggle');
+  if (shareToggle) {
+    shareToggle.classList.toggle('on', appState.settings.autoShare);
+  }
+  
+  document.getElementById('knowledge-modal').classList.add('show');
+  
+  // 2.5秒后自动收下卡片并返回首页（零决策成本）
+  appState.autoTimer = setTimeout(() => {
+    const modal = document.getElementById('knowledge-modal');
+    if (modal && modal.classList.contains('show')) {
+      finishSession();
+    }
+  }, 2500);
+}
+
+function closeKnowledgeCard() {
+  document.getElementById('knowledge-modal').classList.remove('show');
+}
+
+function toggleModalShare(el) {
+  el.classList.toggle('on');
+}
+
+function finishSession() {
+  clearTimeout(appState.autoTimer);
+  
+  // 检查是否分享了卡片
+  const shareToggle = document.querySelector('#modal-share-toggle .toggle');
+  const willShare = shareToggle && shareToggle.classList.contains('on');
+  
+  if (willShare && appState.currentProtocol) {
+    const card = appState.currentProtocol.knowledge;
+    appState.sharedCards.unshift({
+      title: card.title,
+      text: card.text,
+      illustration: appState.currentProtocol.illustration,
+      date: new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+    });
+    // 最多保留8条
+    if (appState.sharedCards.length > 8) appState.sharedCards.pop();
+    saveState();
+  }
+  
+  closeKnowledgeCard();
+  // 关键修复：隐藏 completion-overlay，防止它用 pointer-events:auto 拦截全屏点击
+  document.getElementById('completion-overlay').classList.remove('show');
+  navigateTo('home-page');
+  initHomeRadar();
+  updateRecommendCard();
+}
+
+// ─── 协议库页 ───
+
+function initLibraryPage() {
+  const container = document.getElementById('library-content');
+  
+  container.innerHTML = Object.entries(PROTOCOLS).map(([period, protocols]) => {
+    const cfg = PERIOD_CONFIG[period];
+    const unlockedCount = protocols.filter(p => appState.unlocked.includes(p.id)).length;
+    
+    return `
+      <div class="period-section" id="period-${period}">
+        <div class="period-header" onclick="togglePeriod('${period}')">
+          <svg class="period-icon" viewBox="0 0 28 28" fill="none" stroke="${cfg.color}" stroke-width="1.5">
+            ${period === 'morning' ? '<circle cx="14" cy="14" r="5"/><path d="M14 3v2m0 18v2M3 14h2m18 0h2M6 6l1.5 1.5M20.5 20.5l1.5 1.5M6 22l1.5-1.5M20.5 7.5l1.5-1.5"/>' : ''}
+            ${period === 'afternoon' ? '<path d="M3 18c2-4 6-8 11-8s9 4 11 8"/><path d="M7 14c1.5-2 4-4 7-4s5.5 2 7 4"/>' : ''}
+            ${period === 'evening' ? '<path d="M14 3c-3.5 3.5-5.5 7-5.5 11s2 7.5 5.5 11c3.5-3.5 5.5-7 5.5-11s-2-7.5-5.5-11z"/><circle cx="14" cy="14" r="2.5" fill="currentColor"/>' : ''}
+            ${period === 'night' ? '<path d="M16 4a9 9 0 100 18a7 7 0 010-18z" fill="currentColor" opacity="0.2"/>' : ''}
+          </svg>
+          <div class="period-info">
+            <div class="period-name" style="color:${cfg.color}">${cfg.name}</div>
+            <div class="period-count">已解锁 ${unlockedCount}/${protocols.length}</div>
+          </div>
+          <svg class="period-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 8l5 5 5-5"/>
+          </svg>
+        </div>
+        <div class="period-content">
+          <div class="protocol-grid">
+            ${protocols.map(p => {
+              const isUnlocked = appState.unlocked.includes(p.id);
+              const lockText = UNLOCK_RULES[p.unlock] || '';
+              return `
+                <div class="protocol-item ${isUnlocked ? '' : 'locked'}" 
+                     ${isUnlocked ? `onclick="startProtocolById('${p.id}')"` : ''}>
+                  <div class="item-mini-svg">${ILLUSTRATIONS[p.illustration] || ''}</div>
+                  <div class="item-name">${p.name}</div>
+                  <div class="item-duration">${p.duration}秒</div>
+                  ${!isUnlocked ? `<div class="item-lock">${lockText}</div>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function togglePeriod(period) {
+  const section = document.getElementById(`period-${period}`);
+  section.classList.toggle('expanded');
+}
+
+function startProtocolById(id) {
+  for (const [period, protocols] of Object.entries(PROTOCOLS)) {
+    const protocol = protocols.find(p => p.id === id);
+    if (protocol) {
+      appState.currentProtocol = protocol;
+      appState.currentPeriod = period;
+      startTodayProtocol();
+      return;
+    }
+  }
+}
+
+// ─── 档案页 ───
+
+function initProfilePage() {
+  initProfileRadar();
+  
+  document.getElementById('total-sessions').textContent = appState.totalSessions;
+  
+  // 徽章
+  const badgeScroll = document.getElementById('badge-scroll');
+  badgeScroll.innerHTML = BADGES.map(badge => {
+    const earned = checkBadgeEarned(badge);
+    const svg = MINI_SVGS[badge.icon] || MINI_SVGS['star'];
+    return `
+      <div class="badge-item ${earned ? 'earned' : ''}">
+        <div class="badge-icon" style="${earned ? `border-color:${badge.color};box-shadow:0 0 12px ${badge.color}40` : ''}">
+          <svg viewBox="0 0 40 40" fill="none" stroke="${earned ? badge.color : 'currentColor'}" stroke-width="1.5">${svg.replace(/<svg[^>]*>|<\/svg>/g, '')}</svg>
+        </div>
+        <div class="badge-name">${badge.name}</div>
+      </div>
+    `;
+  }).join('');
+  
+  // 已解锁协议
+  const unlockedGrid = document.getElementById('unlocked-grid');
+  const allProtocols = Object.values(PROTOCOLS).flat();
+  const unlockedProtocols = allProtocols.filter(p => appState.unlocked.includes(p.id));
+  unlockedGrid.innerHTML = unlockedProtocols.map(p => `
+    <div class="unlocked-item">${ILLUSTRATIONS[p.illustration] || ''}</div>
+  `).join('');
+  
+  // 影子队友
+  const teammateList = document.getElementById('teammate-list');
+  teammateList.innerHTML = TEAMMATES.map(t => `
+    <div class="teammate-item">
+      <div class="tm-avatar" style="background:linear-gradient(135deg,${t.color1},${t.color2})">${t.initial}</div>
+      <div class="tm-info">
+        <div class="tm-name">${t.name}</div>
+        <div class="tm-activity">今日做了${t.protocol}</div>
+      </div>
+      <div class="tm-status" style="background:${t.done ? '#90b090' : '#666'}"></div>
+    </div>
+  `).join('');
+  
+  // 知识卡片（收到的）
+  const knowledgeScroll = document.getElementById('knowledge-scroll');
+  knowledgeScroll.innerHTML = KNOWLEDGE_CARDS.slice(0, 4).map(kc => `
+    <div class="knowledge-card">
+      <div class="kc-svg">${ILLUSTRATIONS[kc.illustration] || ''}</div>
+      <div class="kc-text">"${kc.text}"</div>
+      <div class="kc-from">来自 ${kc.from}</div>
+    </div>
+  `).join('');
+  
+  // 我分享的卡片
+  const sharedScroll = document.getElementById('shared-scroll');
+  if (appState.sharedCards && appState.sharedCards.length > 0) {
+    sharedScroll.innerHTML = appState.sharedCards.map(sc => `
+      <div class="knowledge-card">
+        <div class="kc-svg">${ILLUSTRATIONS[sc.illustration] || ''}</div>
+        <div class="kc-text">"${sc.title}"</div>
+        <div class="kc-from">${sc.date} · 已分享给队友</div>
+      </div>
+    `).join('');
+  } else {
+    sharedScroll.innerHTML = `
+      <div class="knowledge-card" style="opacity:0.5">
+        <div class="kc-text" style="font-style:normal">完成仪式后分享知识卡片，会出现在这里</div>
+      </div>
+    `;
+  }
+}
+
+function checkBadgeEarned(badge) {
+  if (badge.condition.includes('count')) {
+    const period = badge.condition.split('-')[0];
+    return appState.periodCounts[period] >= badge.threshold;
+  }
+  return (appState.radar[badge.condition] || 0) >= badge.threshold;
+}
+
+// ─── 设置 ───
+
+function toggleSetting(el) {
+  el.classList.toggle('on');
+  const id = el.id;
+  if (id === 'toggle-share') appState.settings.autoShare = el.classList.contains('on');
+  if (id === 'toggle-teammates') appState.settings.showTeammates = el.classList.contains('on');
+  saveState();
+}
+
+// ─── 粒子动画（轻量版）───
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function initParticles() {
+  const canvas = document.getElementById('particle-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let animating = false;
+  let rafId = null;
+  
+  function resize() {
+    const frame = document.getElementById('app-frame');
+    if (!frame) return;
+    canvas.width = frame.clientWidth * 0.5; // 降分辨率减少GPU压力
+    canvas.height = frame.clientHeight * 0.5;
+    canvas.style.width = frame.clientWidth + 'px';
+    canvas.style.height = frame.clientHeight + 'px';
+    ctx.scale(0.5, 0.5);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  
+  window.triggerParticles = function(color) {
+    // 如果正在动画，先停止
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    particles = [];
+    // 减少粒子数量，使用轻量参数
+    for (let i = 0; i < 24; i++) {
+      particles.push({
+        x: Math.random() * canvas.width * 2,
+        y: canvas.height * 2 + Math.random() * 60,
+        vx: (Math.random() - 0.5) * 1.2,
+        vy: -Math.random() * 1.5 - 0.8,
+        size: Math.random() * 2 + 0.8,
+        opacity: Math.random() * 0.4 + 0.2,
+        color: color
+      });
+    }
+    animating = true;
+    animate();
+  };
+  
+  function animate() {
+    if (!animating || particles.length === 0) {
+      animating = false;
+      ctx.clearRect(0, 0, canvas.width * 2, canvas.height * 2);
+      rafId = null;
+      return;
+    }
+    
+    ctx.clearRect(0, 0, canvas.width * 2, canvas.height * 2);
+    
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.opacity -= 0.005;
+      
+      if (p.opacity <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = hexToRgba(p.color, p.opacity);
+      ctx.fill();
+    }
+    
+    rafId = requestAnimationFrame(animate);
+  }
+}
+
+// ─── 按钮波纹 ───
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('btn-primary') && !e.target.querySelector('.ripple')) {
+    const btn = e.target;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  }
+});
+
+// ─── 初始化 ───
+
+function switchPeriod(period) {
+  setPeriodTheme(period);
+  updateRecommendCard();
+  // 更新雷达图动画
+  initHomeRadar();
+}
+
+// ─── 首屏 ───
+
+function dismissSplash() {
+  const overlay = document.getElementById('splash-overlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+  overlay.classList.add('hidden');
+}
+
+// ─── 初始化 ───
+
+function init() {
+  loadState();
+  const period = detectPeriod();
+  setPeriodTheme(period);
+  initHomeRadar();
+  updateRecommendCard();
+  initParticles();
+  
+  // 首屏每次都会显示，点击后关闭
+}
+
+// 启动
+init();
+
+</script>
+</body>
+</html>
